@@ -1,0 +1,31 @@
+{
+	"schemaVersion": 1,
+	"id": "autobucketclutch",
+	"version": "${version}",
+	"name": "Auto Bucket Clutch",
+	"description": "Automatically uses a water bucket to clutch when falling!",
+	"authors": [
+		"CaptainDude"
+	],
+	"contact": {
+		"homepage": "https://fabricmc.net/",
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/autobucketclutch/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"main": [
+			"net.captaindude.autobucketclutch.AutoBucketClutch"
+		],
+		"client": [
+			"net.captaindude.autobucketclutch.AutoBucketClutchClient"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.18.4",
+		"minecraft": "~1.21.1",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}
