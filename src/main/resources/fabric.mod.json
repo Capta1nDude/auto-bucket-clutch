@@ -20,6 +20,9 @@
 		],
 		"client": [
 			"net.captaindude.autobucketclutch.AutoBucketClutchClient"
+		],
+		"modmenu": [
+			"net.captaindude.autobucketclutch.ModMenuIntegration"
 		]
 	},
 	"depends": {
