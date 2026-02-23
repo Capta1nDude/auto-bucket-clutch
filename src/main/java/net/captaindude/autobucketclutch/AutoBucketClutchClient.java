@@ -53,7 +53,6 @@ public class AutoBucketClutchClient implements ClientModInitializer {
     private static boolean recentlyPlaced = false;
 
     private static BlockPos lastWaterPos = null; // where the water source should be
-    private static int pickupAttemptsLeft = 0; // multi-tick pickup attempts after landing
 
     private static final class ModConfig {
         boolean enabled = false;
@@ -89,7 +88,6 @@ public class AutoBucketClutchClient implements ClientModInitializer {
 
                 // reset state
                 recentlyPlaced = false;
-                pickupAttemptsLeft = 0;
                 lastWaterPos = null;
                 cooldownTicks = 0;
                 endAimOverride(client);
@@ -200,7 +198,6 @@ public class AutoBucketClutchClient implements ClientModInitializer {
 
             var bhr = (net.minecraft.util.hit.BlockHitResult) hit;
             lastWaterPos = bhr.getBlockPos().offset(bhr.getSide());
-            pickupAttemptsLeft = 0; // start on landing
         }
     }
 
