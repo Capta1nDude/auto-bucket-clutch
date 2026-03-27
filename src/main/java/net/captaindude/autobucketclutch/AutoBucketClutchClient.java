@@ -119,8 +119,6 @@ public class AutoBucketClutchClient implements ClientModInitializer {
 
             tickAutoClutch(client);
         });
-
-        AutoBucketClutch.LOGGER.info("AutoBucketClutchClient initialized");
     }
 
     private static void tickAutoClutch(MinecraftClient client) {
@@ -162,16 +160,28 @@ public class AutoBucketClutchClient implements ClientModInitializer {
 
         // 2) Normal clutch logic
         boolean isFallingFastEnough = player.getVelocity().y < -0.55;
-        boolean hasMeaningfulFallDistance = player.fallDistance > minFallDistance;
+        double distanceToGround = distanceToGround(client, 32.0);
+        boolean groundDetected = distanceToGround != Double.MAX_VALUE;
+        boolean isWithinClutchRange = groundDetected && distanceToGround <= minFallDistance;
 
-        if (!isFallingFastEnough || !hasMeaningfulFallDistance) {
+        AutoBucketClutch.LOGGER.info("Distance to ground: " + distanceToGround);
+        AutoBucketClutch.LOGGER.info("Velocity: " + player.getVelocity());
+        AutoBucketClutch.LOGGER.info("Is falling fast enough: " + isFallingFastEnough);
+        AutoBucketClutch.LOGGER.info("Ground detected: " + groundDetected);
+        AutoBucketClutch.LOGGER.info("Is within clutch range: " + isWithinClutchRange);
+
+        if (!isFallingFastEnough || !isWithinClutchRange) {
             // if we were overriding aim but didn't end up placing, restore to avoid "stuck"
             // camera
+            AutoBucketClutch.LOGGER.info("Not falling fast enough or not within clutch range");
             if (isAimingOverride) {
+                AutoBucketClutch.LOGGER.info("Ending aim override");
                 endAimOverride(client);
             }
             return;
         }
+
+        AutoBucketClutch.LOGGER.info("Falling fast enough and within clutch range");
 
         // Ensure we have a water bucket ready (hotbar-first, otherwise swap into
         // preferred slot)
@@ -179,15 +189,21 @@ public class AutoBucketClutchClient implements ClientModInitializer {
             return;
         }
 
+        AutoBucketClutch.LOGGER.info("Water bucket ready");
+
         // Store view once, then look down for the clutch attempt
         beginAimOverride(client);
         lookDown(client);
+
+        AutoBucketClutch.LOGGER.info("Looking down");
 
         // Vanilla-style raycast to confirm we are in range of a block to place against
         HitResult hit = player.raycast(4.5d, 1.0f, false);
         if (hit.getType() != HitResult.Type.BLOCK) {
             return;
         }
+
+        AutoBucketClutch.LOGGER.info("Hit a block");
 
         // Place water (use item)
         var itemResult = client.interactionManager.interactItem(player, Hand.MAIN_HAND);
@@ -199,6 +215,8 @@ public class AutoBucketClutchClient implements ClientModInitializer {
             var bhr = (net.minecraft.util.hit.BlockHitResult) hit;
             lastWaterPos = bhr.getBlockPos().offset(bhr.getSide());
         }
+
+        AutoBucketClutch.LOGGER.info("Placed water");
     }
 
     // ------------------------------
@@ -345,6 +363,29 @@ public class AutoBucketClutchClient implements ClientModInitializer {
             player.setPitch(storedPitch);
             isAimingOverride = false;
         }
+    }
+        
+    private static double distanceToGround(MinecraftClient client, double maxCheckDistance) {
+        var player = client.player;
+        if (player == null) {
+            return Double.MAX_VALUE;
+        }
+
+        Vec3d start = player.getPos();
+        Vec3d end = start.subtract(0.0, maxCheckDistance, 0.0);
+
+        var hit = player.getWorld().raycast(new net.minecraft.world.RaycastContext(
+                start,
+                end,
+                net.minecraft.world.RaycastContext.ShapeType.COLLIDER,
+                net.minecraft.world.RaycastContext.FluidHandling.NONE,
+                player));
+
+        if (hit.getType() != HitResult.Type.BLOCK) {
+            return Double.MAX_VALUE;
+        }
+
+        return start.y - hit.getPos().y;
     }
 
     // ------------------------------
