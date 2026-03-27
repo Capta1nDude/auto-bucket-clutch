@@ -22,6 +22,7 @@ import net.minecraft.screen.slot.Slot;
 import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
@@ -63,23 +64,25 @@ public class AutoBucketClutchClient implements ClientModInitializer {
         boolean requireSneak = false;
         boolean autoPickup = true;
     }
-
+    
     @Override
     public void onInitializeClient() {
         loadConfig();
+
+        final KeyBinding.Category KEY_CATEGORY = KeyBinding.Category
+                .create(Identifier.of("autobucketclutch", "keybinds"));
 
         swapBucketKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.autobucketclutch.swap_bucket",
                 InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_R,
-                "category.autobucketclutch"));
+                KEY_CATEGORY));
 
         toggleAutoClutchKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.autobucketclutch.toggle",
                 InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_G,
-                "category.autobucketclutch"));
-
+                KEY_CATEGORY));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
 
             if (toggleAutoClutchKey.wasPressed()) {
@@ -371,21 +374,21 @@ public class AutoBucketClutchClient implements ClientModInitializer {
             return Double.MAX_VALUE;
         }
 
-        Vec3d start = player.getPos();
+        Vec3d start = new Vec3d(player.getX(), player.getY(), player.getZ());
         Vec3d end = start.subtract(0.0, maxCheckDistance, 0.0);
 
-        var hit = player.getWorld().raycast(new net.minecraft.world.RaycastContext(
+        var hit = player.getEntityWorld().raycast(new net.minecraft.world.RaycastContext(
                 start,
                 end,
                 net.minecraft.world.RaycastContext.ShapeType.COLLIDER,
                 net.minecraft.world.RaycastContext.FluidHandling.NONE,
                 player));
 
-        if (hit.getType() != HitResult.Type.BLOCK) {
+        if (!(hit instanceof net.minecraft.util.hit.BlockHitResult blockHit)) {
             return Double.MAX_VALUE;
         }
 
-        return start.y - hit.getPos().y;
+        return start.y - blockHit.getBlockPos().getY() - 1.0;
     }
 
     // ------------------------------
