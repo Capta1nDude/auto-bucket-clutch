@@ -278,7 +278,7 @@ public class AutoBucketClutchClient implements ClientModInitializer {
     }
 
     private static void selectHotbarSlot(MinecraftClient client, int slot0to8) {
-        client.player.getInventory().selectedSlot = slot0to8;
+        client.player.getInventory().setSelectedSlot(slot0to8);
     }
 
     private static boolean swapWaterBucketIntoSlot(MinecraftClient client, int hotbarSlot0to8) {
