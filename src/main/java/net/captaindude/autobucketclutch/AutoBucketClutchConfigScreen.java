@@ -3,8 +3,8 @@ package net.captaindude.autobucketclutch;
 import me.shedaniel.clothconfig2.api.ConfigBuilder;
 import me.shedaniel.clothconfig2.api.ConfigCategory;
 import me.shedaniel.clothconfig2.api.ConfigEntryBuilder;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
 
 public final class AutoBucketClutchConfigScreen {
 
@@ -15,24 +15,24 @@ public final class AutoBucketClutchConfigScreen {
 
         ConfigBuilder builder = ConfigBuilder.create()
                 .setParentScreen(parent)
-                .setTitle(Text.literal("AutoBucketClutch Settings"));
+                .setTitle(Component.literal("AutoBucketClutch Settings"));
 
         // Persist whatever has been changed via setSaveConsumer calls
         builder.setSavingRunnable(AutoBucketClutchClient::saveConfigFromUi);
 
-        ConfigCategory general = builder.getOrCreateCategory(Text.literal("General"));
+        ConfigCategory general = builder.getOrCreateCategory(Component.literal("General"));
         ConfigEntryBuilder eb = builder.entryBuilder();
 
         // Enabled default
         general.addEntry(
-                eb.startBooleanToggle(Text.literal("Enabled"), AutoBucketClutchClient.getEnabled())
+                eb.startBooleanToggle(Component.literal("Enabled"), AutoBucketClutchClient.getEnabled())
                         .setDefaultValue(false)
                         .setSaveConsumer(AutoBucketClutchClient::setEnabled)
                         .build());
 
         // Min fall distance (blocks)
         general.addEntry(
-                eb.startIntSlider(Text.literal("Min fall distance to clutch (blocks)"),
+                eb.startIntSlider(Component.literal("Min fall distance to clutch (blocks)"),
                         (int) AutoBucketClutchClient.getMinFallDistance(),
                         0, 50)
                         .setDefaultValue(6)
@@ -41,7 +41,7 @@ public final class AutoBucketClutchConfigScreen {
 
         // Preferred hotbar slot (1..9)
         general.addEntry(
-                eb.startIntSlider(Text.literal("Preferred hotbar slot for water bucket"),
+                eb.startIntSlider(Component.literal("Preferred hotbar slot for water bucket"),
                         AutoBucketClutchClient.getPreferredHotbarSlot(),
                         1, 9)
                         .setDefaultValue(1)
@@ -49,21 +49,21 @@ public final class AutoBucketClutchConfigScreen {
                         .build());
 
         general.addEntry(
-                eb.startBooleanToggle(Text.literal("Disable in Creative mode"),
+                eb.startBooleanToggle(Component.literal("Disable in Creative mode"),
                         AutoBucketClutchClient.getDisableInCreative())
                         .setDefaultValue(true)
                         .setSaveConsumer(AutoBucketClutchClient::setDisableInCreative)
                         .build());
 
         general.addEntry(
-                eb.startBooleanToggle(Text.literal("Require Sneak to activate"),
+                eb.startBooleanToggle(Component.literal("Require Sneak to activate"),
                         AutoBucketClutchClient.getRequireSneak())
                         .setDefaultValue(false)
                         .setSaveConsumer(AutoBucketClutchClient::setRequireSneak)
                         .build());
 
         general.addEntry(
-                eb.startBooleanToggle(Text.literal("Auto pickup after clutch"), AutoBucketClutchClient.getAutoPickup())
+                eb.startBooleanToggle(Component.literal("Auto pickup after clutch"), AutoBucketClutchClient.getAutoPickup())
                         .setDefaultValue(true)
                         .setSaveConsumer(AutoBucketClutchClient::setAutoPickup)
                         .build());
