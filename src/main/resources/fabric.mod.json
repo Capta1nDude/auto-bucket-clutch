@@ -8,8 +8,8 @@
 		"CaptainDude"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"homepage": "https://github.com/Capta1nDude/auto-bucket-clutch",
+		"sources": "https://github.com/Capta1nDude/auto-bucket-clutch"
 	},
 	"license": "CC0-1.0",
 	"icon": "assets/autobucketclutch/icon.png",
@@ -27,8 +27,8 @@
 	},
 	"depends": {
 		"fabricloader": ">=0.18.5",
-		"minecraft": "1.21.11",
-		"java": ">=21",
+		"minecraft": "26.1",
+		"java": ">=25",
 		"fabric-api": "*"
 	}
 }

@@ -9,28 +9,28 @@ import org.lwjgl.glfw.GLFW;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.mojang.blaze3d.platform.InputConstants;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.util.InputUtil;
-import net.minecraft.item.Items;
-import net.minecraft.screen.slot.Slot;
-import net.minecraft.screen.slot.SlotActionType;
-import net.minecraft.text.Text;
-import net.minecraft.util.Hand;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.inventory.ContainerInput;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 
 public class AutoBucketClutchClient implements ClientModInitializer {
 
-    private static KeyBinding swapBucketKey;
-    private static KeyBinding toggleAutoClutchKey;
+    private static KeyMapping swapBucketKey;
+    private static KeyMapping toggleAutoClutchKey;
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path CONFIG_PATH = FabricLoader.getInstance().getConfigDir().resolve("autobucketclutch.json");
@@ -69,23 +69,23 @@ public class AutoBucketClutchClient implements ClientModInitializer {
     public void onInitializeClient() {
         loadConfig();
 
-        final KeyBinding.Category KEY_CATEGORY = KeyBinding.Category
-                .create(Identifier.of("autobucketclutch", "keybinds"));
+        final KeyMapping.Category KEY_CATEGORY = KeyMapping.Category
+                .register(Identifier.fromNamespaceAndPath("autobucketclutch", "keybinds"));
 
-        swapBucketKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+        swapBucketKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.autobucketclutch.swap_bucket",
-                InputUtil.Type.KEYSYM,
+                InputConstants.Type.KEYSYM,
                 GLFW.GLFW_KEY_R,
                 KEY_CATEGORY));
 
-        toggleAutoClutchKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+        toggleAutoClutchKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.autobucketclutch.toggle",
-                InputUtil.Type.KEYSYM,
+                InputConstants.Type.KEYSYM,
                 GLFW.GLFW_KEY_G,
                 KEY_CATEGORY));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
 
-            if (toggleAutoClutchKey.wasPressed()) {
+            if (toggleAutoClutchKey.consumeClick()) {
                 isEnabled = !isEnabled;
                 saveConfig(isEnabled);
 
@@ -96,23 +96,22 @@ public class AutoBucketClutchClient implements ClientModInitializer {
                 endAimOverride(client);
 
                 if (client.player != null) {
-                    client.player.sendMessage(
-                            Text.literal("Automatic clutch " + (isEnabled ? "ON" : "OFF")),
-                            true);
+                    client.player.sendOverlayMessage(
+                            Component.literal("Automatic clutch " + (isEnabled ? "ON" : "OFF")));
                 }
             }
 
-            if (swapBucketKey.wasPressed()) {
+            if (swapBucketKey.consumeClick()) {
                 // manual helper: swap into preferred slot (or select hotbar bucket if already
                 // there)
-                if (client.player != null && client.interactionManager != null) {
+                if (client.player != null && client.gameMode != null) {
                     ensureWaterBucketReady(client);
                 }
             }
 
             if (!isEnabled)
                 return;
-            if (client.player == null || client.interactionManager == null)
+            if (client.player == null || client.gameMode == null)
                 return;
 
             if (cooldownTicks > 0) {
@@ -124,18 +123,18 @@ public class AutoBucketClutchClient implements ClientModInitializer {
         });
     }
 
-    private static void tickAutoClutch(MinecraftClient client) {
+    private static void tickAutoClutch(Minecraft client) {
         var player = client.player;
 
         // Auto-disable in creative
-        if (disableInCreative && player.getAbilities().creativeMode) {
+        if (disableInCreative && player.getAbilities().instabuild) {
             if (isAimingOverride)
                 endAimOverride(client);
             return;
         }
 
         // Require sneak to activate
-        if (requireSneak && !player.isSneaking()) {
+        if (requireSneak && !player.isShiftKeyDown()) {
             if (isAimingOverride)
                 endAimOverride(client);
             return;
@@ -144,7 +143,7 @@ public class AutoBucketClutchClient implements ClientModInitializer {
         // 1) If we recently placed, do pickup mode after landing for a few ticks
         if (recentlyPlaced) {
             if (!autoPickup) {
-                if (player.isOnGround()) {
+                if (player.onGround()) {
                     endAimOverride(client);
                     recentlyPlaced = false;
                     lastWaterPos = null;
@@ -152,7 +151,7 @@ public class AutoBucketClutchClient implements ClientModInitializer {
                 return;
             }
 
-            if (player.isOnGround()) {
+            if (player.onGround()) {
                 tryPickupWater(client);
                 recentlyPlaced = false;
                 return;
@@ -162,13 +161,13 @@ public class AutoBucketClutchClient implements ClientModInitializer {
         }
 
         // 2) Normal clutch logic
-        boolean isFallingFastEnough = player.getVelocity().y < -0.55;
+        boolean isFallingFastEnough = player.getDeltaMovement().y < -0.55;
         double distanceToGround = distanceToGround(client, 32.0);
         boolean groundDetected = distanceToGround != Double.MAX_VALUE;
         boolean isWithinClutchRange = groundDetected && distanceToGround <= minFallDistance;
 
         AutoBucketClutch.LOGGER.info("Distance to ground: " + distanceToGround);
-        AutoBucketClutch.LOGGER.info("Velocity: " + player.getVelocity());
+        AutoBucketClutch.LOGGER.info("Velocity: " + player.getDeltaMovement());
         AutoBucketClutch.LOGGER.info("Is falling fast enough: " + isFallingFastEnough);
         AutoBucketClutch.LOGGER.info("Ground detected: " + groundDetected);
         AutoBucketClutch.LOGGER.info("Is within clutch range: " + isWithinClutchRange);
@@ -201,7 +200,7 @@ public class AutoBucketClutchClient implements ClientModInitializer {
         AutoBucketClutch.LOGGER.info("Looking down");
 
         // Vanilla-style raycast to confirm we are in range of a block to place against
-        HitResult hit = player.raycast(4.5d, 1.0f, false);
+        HitResult hit = player.pick(4.5d, 1.0f, false);
         if (hit.getType() != HitResult.Type.BLOCK) {
             return;
         }
@@ -209,14 +208,14 @@ public class AutoBucketClutchClient implements ClientModInitializer {
         AutoBucketClutch.LOGGER.info("Hit a block");
 
         // Place water (use item)
-        var itemResult = client.interactionManager.interactItem(player, Hand.MAIN_HAND);
-        if (itemResult != null && itemResult.isAccepted()) {
-            player.swingHand(Hand.MAIN_HAND);
+        var itemResult = client.gameMode.useItem(player, InteractionHand.MAIN_HAND);
+        if (itemResult != null && itemResult.consumesAction()) {
+            player.swing(InteractionHand.MAIN_HAND);
             recentlyPlaced = true;
             cooldownTicks = 6;
 
-            var bhr = (net.minecraft.util.hit.BlockHitResult) hit;
-            lastWaterPos = bhr.getBlockPos().offset(bhr.getSide());
+            var bhr = (net.minecraft.world.phys.BlockHitResult) hit;
+            lastWaterPos = bhr.getBlockPos().relative(bhr.getDirection());
         }
 
         AutoBucketClutch.LOGGER.info("Placed water");
@@ -226,32 +225,32 @@ public class AutoBucketClutchClient implements ClientModInitializer {
     // Water bucket selection logic
     // ------------------------------
 
-    private static void tryPickupWater(MinecraftClient client) {
+    private static void tryPickupWater(Minecraft client) {
         var player = client.player;
 
         if (lastWaterPos != null) {
             lookAtBlockCenter(client, lastWaterPos);
         } else {
-            player.setPitch(90f);
+            player.setXRot(90f);
         }
 
-        if (!player.getMainHandStack().isOf(Items.BUCKET))
+        if (!player.getMainHandItem().is(Items.BUCKET))
             return;
 
-        var result = client.interactionManager.interactItem(player, Hand.MAIN_HAND);
-        if (result != null && result.isAccepted()) {
-            player.swingHand(Hand.MAIN_HAND);
+        var result = client.gameMode.useItem(player, InteractionHand.MAIN_HAND);
+        if (result != null && result.consumesAction()) {
+            player.swing(InteractionHand.MAIN_HAND);
             endAimOverride(client);
             lastWaterPos = null;
             cooldownTicks = 6;
         }
     }
 
-    private static boolean ensureWaterBucketReady(MinecraftClient client) {
+    private static boolean ensureWaterBucketReady(Minecraft client) {
         var player = client.player;
 
         // Already holding
-        if (player.getMainHandStack().isOf(Items.WATER_BUCKET)) {
+        if (player.getMainHandItem().is(Items.WATER_BUCKET)) {
             return true;
         }
 
@@ -271,32 +270,32 @@ public class AutoBucketClutchClient implements ClientModInitializer {
         return swapped;
     }
 
-    private static int findWaterBucketInHotbar(MinecraftClient client) {
+    private static int findWaterBucketInHotbar(Minecraft client) {
         var inv = client.player.getInventory();
         for (int i = 0; i < 9; i++) {
-            if (inv.getStack(i).isOf(Items.WATER_BUCKET))
+            if (inv.getItem(i).is(Items.WATER_BUCKET))
                 return i;
         }
         return -1;
     }
 
-    private static void selectHotbarSlot(MinecraftClient client, int slot0to8) {
+    private static void selectHotbarSlot(Minecraft client, int slot0to8) {
         client.player.getInventory().setSelectedSlot(slot0to8);
     }
 
-    private static boolean swapWaterBucketIntoSlot(MinecraftClient client, int hotbarSlot0to8) {
-        if (client.player == null || client.interactionManager == null)
+    private static boolean swapWaterBucketIntoSlot(Minecraft client, int hotbarSlot0to8) {
+        if (client.player == null || client.gameMode == null)
             return false;
 
         int bucketSlotIndexInHandler = -1;
 
-        for (int i = 0; i < client.player.currentScreenHandler.slots.size(); i++) {
-            Slot slot = client.player.currentScreenHandler.getSlot(i);
+        for (int i = 0; i < client.player.containerMenu.slots.size(); i++) {
+            Slot slot = client.player.containerMenu.getSlot(i);
             if (slot == null)
                 continue;
 
-            var stack = slot.getStack();
-            if (!stack.isEmpty() && stack.isOf(Items.WATER_BUCKET)) {
+            var stack = slot.getItem();
+            if (!stack.isEmpty() && stack.is(Items.WATER_BUCKET)) {
                 bucketSlotIndexInHandler = i;
                 break;
             }
@@ -305,12 +304,14 @@ public class AutoBucketClutchClient implements ClientModInitializer {
         if (bucketSlotIndexInHandler == -1)
             return false;
 
-        client.interactionManager.clickSlot(
-                client.player.currentScreenHandler.syncId,
-                bucketSlotIndexInHandler,
-                hotbarSlot0to8,
-                SlotActionType.SWAP,
-                client.player);
+        // Swap bucket to hand
+        client.gameMode.handleContainerInput(
+            client.player.containerMenu.containerId,
+            bucketSlotIndexInHandler,
+            hotbarSlot0to8,
+            ContainerInput.SWAP,
+            client.player
+        );
 
         return true;
     }
@@ -319,17 +320,17 @@ public class AutoBucketClutchClient implements ClientModInitializer {
     // Aim helpers
     // ------------------------------
 
-    private static void lookDown(MinecraftClient client) {
-        client.player.setPitch(90.0f);
+    private static void lookDown(Minecraft client) {
+        client.player.setXRot(90.0f);
     }
 
-    private static void lookAtBlockCenter(MinecraftClient client, BlockPos pos) {
+    private static void lookAtBlockCenter(Minecraft client, BlockPos pos) {
         var player = client.player;
         if (player == null)
             return;
 
-        Vec3d eye = player.getEyePos();
-        Vec3d target = Vec3d.ofCenter(pos);
+        Vec3 eye = player.getEyePosition();
+        Vec3 target = Vec3.atCenterOf(pos);
 
         double dx = target.x - eye.x;
         double dy = target.y - eye.y;
@@ -340,51 +341,51 @@ public class AutoBucketClutchClient implements ClientModInitializer {
         float yaw = (float) (Math.toDegrees(Math.atan2(dz, dx)) - 90.0);
         float pitch = (float) (-Math.toDegrees(Math.atan2(dy, horiz)));
 
-        player.setYaw(yaw);
-        player.setPitch(pitch);
+        player.setYRot(yaw);
+        player.setXRot(pitch);
     }
 
-    private static void beginAimOverride(MinecraftClient client) {
+    private static void beginAimOverride(Minecraft client) {
         var player = client.player;
         if (player == null)
             return;
 
         if (!isAimingOverride) {
-            storedYaw = player.getYaw();
-            storedPitch = player.getPitch();
+            storedYaw = player.getYRot();
+            storedPitch = player.getXRot();
             isAimingOverride = true;
         }
     }
 
-    private static void endAimOverride(MinecraftClient client) {
+    private static void endAimOverride(Minecraft client) {
         var player = client.player;
         if (player == null)
             return;
 
         if (isAimingOverride) {
-            player.setYaw(storedYaw);
-            player.setPitch(storedPitch);
+            player.setYRot(storedYaw);
+            player.setXRot(storedPitch);
             isAimingOverride = false;
         }
     }
         
-    private static double distanceToGround(MinecraftClient client, double maxCheckDistance) {
+    private static double distanceToGround(Minecraft client, double maxCheckDistance) {
         var player = client.player;
         if (player == null) {
             return Double.MAX_VALUE;
         }
 
-        Vec3d start = new Vec3d(player.getX(), player.getY(), player.getZ());
-        Vec3d end = start.subtract(0.0, maxCheckDistance, 0.0);
+        Vec3 start = new Vec3(player.getX(), player.getY(), player.getZ());
+        Vec3 end = start.subtract(0.0, maxCheckDistance, 0.0);
 
-        var hit = player.getEntityWorld().raycast(new net.minecraft.world.RaycastContext(
+        var hit = player.level().clip(new net.minecraft.world.level.ClipContext(
                 start,
                 end,
-                net.minecraft.world.RaycastContext.ShapeType.COLLIDER,
-                net.minecraft.world.RaycastContext.FluidHandling.NONE,
+                net.minecraft.world.level.ClipContext.Block.COLLIDER,
+                net.minecraft.world.level.ClipContext.Fluid.NONE,
                 player));
 
-        if (!(hit instanceof net.minecraft.util.hit.BlockHitResult blockHit)) {
+        if (!(hit instanceof net.minecraft.world.phys.BlockHitResult blockHit)) {
             return Double.MAX_VALUE;
         }
 
