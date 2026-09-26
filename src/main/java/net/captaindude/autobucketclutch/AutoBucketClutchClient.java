@@ -164,7 +164,8 @@ public class AutoBucketClutchClient implements ClientModInitializer {
         boolean isFallingFastEnough = player.getDeltaMovement().y < -0.55;
         double distanceToGround = distanceToGround(client, 32.0);
         boolean groundDetected = distanceToGround != Double.MAX_VALUE;
-        boolean isWithinClutchRange = groundDetected && distanceToGround <= minFallDistance;
+        boolean isWithinClutchRange = groundDetected && distanceToGround <= 6.0f;
+        boolean hasMeaningfulFallDistance = PlayerFallDistance.get(player) >= minFallDistance;
 
         AutoBucketClutch.LOGGER.info("Distance to ground: " + distanceToGround);
         AutoBucketClutch.LOGGER.info("Velocity: " + player.getDeltaMovement());
@@ -180,6 +181,11 @@ public class AutoBucketClutchClient implements ClientModInitializer {
                 AutoBucketClutch.LOGGER.info("Ending aim override");
                 endAimOverride(client);
             }
+            return;
+        }
+
+        if (!hasMeaningfulFallDistance) {
+            AutoBucketClutch.LOGGER.info("No meaningful fall distance");
             return;
         }
 
