@@ -3,23 +3,23 @@ package net.captaindude.autobucketclutch;
 import java.util.Map;
 import java.util.WeakHashMap;
 
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.world.World;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 
-public final class PlayerFallDistance {
+public final class PlayerFallDistanceProvider {
 
-    private static final Map<PlayerEntity, FallState> FALL_STATES = new WeakHashMap<>();
+    private static final Map<Player, FallState> FALL_STATES = new WeakHashMap<>();
 
-    private PlayerFallDistance() {
+    private PlayerFallDistanceProvider() {
     }
 
-    public static float get(PlayerEntity player) {
+    public static float get(Player player) {
         if (player == null) {
             return 0.0f;
         }
 
-        FallState state = FALL_STATES.computeIfAbsent(player, p -> new FallState(p.getEntityWorld(), p.getY()));
-        World world = player.getEntityWorld();
+        FallState state = FALL_STATES.computeIfAbsent(player, p -> new FallState(p.level(), p.getY()));
+        Level world = player.level();
 
         if (state.world != world || shouldReset(player)) {
             state.reset(world, player.getY());
@@ -39,30 +39,30 @@ public final class PlayerFallDistance {
         return state.fallDistance;
     }
 
-    public static void reset(PlayerEntity player) {
+    public static void reset(Player player) {
         if (player != null) {
             FALL_STATES.remove(player);
         }
     }
 
-    private static boolean shouldReset(PlayerEntity player) {
-        return player.isOnGround()
-                || player.isTouchingWater()
-                || player.isClimbing()
-                || player.hasVehicle()
+    private static boolean shouldReset(Player player) {
+        return player.onGround()
+                || player.isInWater()
+                || player.onClimbable()
+                || player.isPassenger()
                 || player.getAbilities().flying;
     }
 
     private static final class FallState {
-        private World world;
+        private Level world;
         private double lastY;
         private float fallDistance;
 
-        private FallState(World world, double lastY) {
+        private FallState(Level world, double lastY) {
             reset(world, lastY);
         }
 
-        private void reset(World world, double lastY) {
+        private void reset(Level world, double lastY) {
             this.world = world;
             this.lastY = lastY;
             this.fallDistance = 0.0f;
