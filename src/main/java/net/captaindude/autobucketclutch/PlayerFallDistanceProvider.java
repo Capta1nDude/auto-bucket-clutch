@@ -6,11 +6,11 @@ import java.util.WeakHashMap;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 
-public final class PlayerFallDistance {
+public final class PlayerFallDistanceProvider {
 
     private static final Map<Player, FallState> FALL_STATES = new WeakHashMap<>();
 
-    private PlayerFallDistance() {
+    private PlayerFallDistanceProvider() {
     }
 
     public static float get(Player player) {
