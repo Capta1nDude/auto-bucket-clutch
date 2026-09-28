@@ -1,7 +1,5 @@
 package net.captaindude.autobucketclutch;
 
-import org.lwjgl.glfw.GLFW;
-
 import com.mojang.blaze3d.platform.InputConstants;
 
 import net.captaindude.autobucketclutch.ModMenuIntegration.ModConfig;
@@ -32,8 +30,8 @@ public class AutoBucketClutchClient implements ClientModInitializer {
     private static KeyMapping swapBucketKey;
     private static KeyMapping toggleAutoClutchKey;
 
-    private static int SWAP_KEY = GLFW.GLFW_KEY_R;
-    private static int TOGGLE_KEY = GLFW.GLFW_KEY_G;
+    private static int SWAP_KEY = InputConstants.KEY_R;
+    private static int TOGGLE_KEY = InputConstants.KEY_G;
 
     private static ModConfig config;
     
@@ -84,13 +82,13 @@ public class AutoBucketClutchClient implements ClientModInitializer {
 
         swapBucketKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.autobucketclutch.swap_bucket",
-                InputConstants.Type.KEYSYM,
+                InputConstants.Type.KEYBOARD,
                 SWAP_KEY,
                 KEY_CATEGORY));
 
         toggleAutoClutchKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.autobucketclutch.toggle",
-                InputConstants.Type.KEYSYM,
+                InputConstants.Type.KEYBOARD,
                 TOGGLE_KEY,
                 KEY_CATEGORY));
     }

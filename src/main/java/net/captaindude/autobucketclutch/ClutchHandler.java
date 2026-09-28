@@ -12,6 +12,7 @@ import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
@@ -126,7 +127,7 @@ public class ClutchHandler {
 
         var result = client.gameMode.useItem(player, InteractionHand.MAIN_HAND);
         if (result != null && result.consumesAction()) {
-            player.swing(InteractionHand.MAIN_HAND);
+            player.swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, true);
             endAimOverride(client);
             recentlyPlaced = false;
             placementPos = null;
@@ -161,7 +162,7 @@ public class ClutchHandler {
             client.gameMode.useItemOn(player, InteractionHand.MAIN_HAND, bhr);
         }
 
-        player.swing(InteractionHand.MAIN_HAND);
+        player.swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, true);
         cooldownTicks = 6;
         placementPos = bhr.getBlockPos().relative(bhr.getDirection());
     }
@@ -190,7 +191,7 @@ public class ClutchHandler {
             )
         );
 
-        player.swing(InteractionHand.MAIN_HAND);
+        player.swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, true);
         enterBoatSoon = false;
     }
 
